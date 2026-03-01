@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TechPath - Find Your Engineering Domain</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- External CSS -->
+    <link rel="stylesheet" href="css/style.css">
+
+    <!-- Internal CSS Example: Hero Section Animation & specific banner -->
+    <style>
+        /* Internal CSS requirement applied to hero background and generic loader */
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .hero-section {
+            background: linear-gradient(-45deg, #0f172a, #1e293b, #312e81, #4c1d95);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+        .reveal-banner {
+            background-color: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 1rem 2rem;
+            display: inline-block;
+            margin-bottom: 2rem;
+            animation: slideDownFade 1s ease forwards;
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        @keyframes slideDownFade {
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Main App Container -->
+    <div id="app">
+        <!-- Sections will be toggled via JS -->
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/data.js"></script>
+    <script src="js/script.js"></script>
+</body>
+</html>
