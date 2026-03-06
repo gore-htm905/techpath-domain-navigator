@@ -1,13 +1,10 @@
-// ============================================================
-// TechPath Script — SPA Navigation, Rendering, Quiz, Chatbot
-// Features: Scoring chatbot, Domain Pie Chart, Resources,
-//           Voice (click-to-speak roadmap), Contact Mentor
-// ============================================================
+
 
 // ─── APP STATE ───────────────────────────────────────────────
 let appState = {
     currentBranchId: null,
-    quiz: { domainId: null, questions: [], currentIndex: 0, score: 0 }
+    quiz: { domainId: null, questions: [], currentIndex: 0, score: 0 },
+    theme: localStorage.getItem('techpath-theme') || 'original'
 };
 
 // ─── VOICE ─────────────────────────────────────────────────
@@ -21,6 +18,23 @@ function toggleVoice() {
         btn.textContent = voiceEnabled ? '🔊 Voice ON' : '🔇 Voice OFF';
         btn.classList.toggle('voice-active', voiceEnabled);
     }
+}
+
+// ─── THEME ──────────────────────────────────────────────────
+function setTheme(theme) {
+    appState.theme = theme;
+    localStorage.setItem('techpath-theme', theme);
+    document.body.className = '';
+    if (theme === 'light') document.body.classList.add('theme-light');
+    if (theme === 'mono') document.body.classList.add('theme-mono');
+
+    // Update active state in UI if switcher exists
+    const selects = document.querySelectorAll('.theme-select');
+    selects.forEach(s => s.value = theme);
+}
+
+function initTheme() {
+    setTheme(appState.theme);
 }
 
 function speakText(text) {
@@ -56,30 +70,74 @@ function handleRoadmapClick(element) {
 
 // ─── INITIALISATION ─────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+    initTheme();
     renderNavbar();
-    renderLandingSection();
+
+    // Initial route handling
+    const path = window.location.hash.slice(1) || 'home';
+    handleRoute(path);
+
     initChatbot();
 });
+
+window.addEventListener('popstate', (event) => {
+    if (event.state && event.state.path) {
+        handleRoute(event.state.path, false);
+    } else {
+        renderLandingSection(false);
+    }
+});
+
+function navigate(path) {
+    handleRoute(path, true);
+}
+
+function handleRoute(path, push = true) {
+    const [route, id] = path.split('/');
+
+    if (push) {
+        history.pushState({ path }, '', `#${path}`);
+    }
+
+    if (route === 'home') renderLandingSection(false);
+    else if (route === 'branches') renderBranchSection(false);
+    else if (route === 'domains') {
+        if (id) renderDomainsSection(id, false);
+        else renderBranchSection(false);
+    }
+    else if (route === 'detail') renderDomainDetail(id, false);
+    else if (route === 'compare') renderComparison(false);
+    else renderLandingSection(false);
+}
 
 // ─── NAVBAR ─────────────────────────────────────────────────
 function renderNavbar() {
     const navHTML = `
         <nav class="navbar" id="mainNavbar">
-            <div class="nav-brand" onclick="renderLandingSection()">
+            <div class="nav-brand" onclick="navigate('home')">
                 <span class="text-gradient">TechPath</span>
             </div>
             <div class="nav-links">
-                <button class="btn btn-ghost" onclick="renderBranchSection()">Explore</button>
-                <button class="btn btn-ghost" onclick="renderComparison()">Compare</button>
+                <select class="btn btn-ghost theme-select" onchange="setTheme(this.value)" style="background:var(--bg-elevated); padding: 0.3rem 0.6rem; border-radius: var(--r-sm); outline:none; border: 1px solid var(--border);">
+                    <option value="original">Original</option>
+                    <option value="light">Light</option>
+                    <option value="mono">Mono</option>
+                </select>
+                <button class="btn btn-ghost" onclick="navigate('branches')">Explore</button>
+                <button class="btn btn-ghost" onclick="navigate('compare')">Compare</button>
                 <button class="btn voice-btn" id="voiceToggleBtn" onclick="toggleVoice()" title="Toggle Voice Assistant">🔇 Voice OFF</button>
-                <button class="btn btn-primary nav-cta" onclick="renderBranchSection()">Get Started →</button>
+                <button class="btn btn-primary nav-cta" onclick="navigate('branches')">Get Started →</button>
             </div>
         </nav>`;
     document.body.insertAdjacentHTML('afterbegin', navHTML);
+    // Set initial value for select
+    const select = document.querySelector('.theme-select');
+    if (select) select.value = appState.theme;
 }
 
 // ─── LANDING / HERO ─────────────────────────────────────────
-function renderLandingSection() {
+function renderLandingSection(push = true) {
+    if (push) navigate('home');
     const app = document.getElementById('app');
     app.className = '';
     window.scrollTo(0, 0);
@@ -95,8 +153,8 @@ function renderLandingSection() {
                 <h1 class="hero-title">Navigate Your <span class="text-gradient">Tech Career</span></h1>
                 <p class="hero-subtitle">Explore domains, take quizzes, and find the perfect engineering field tailored to your interests and skills. Designed exclusively for engineering students.</p>
                 <div class="hero-actions">
-                    <button class="btn btn-primary btn-lg" onclick="renderBranchSection()">Explore Branches →</button>
-                    <button class="btn btn-outline btn-lg" onclick="renderComparison()">Compare Domains</button>
+                    <button class="btn btn-primary btn-lg" onclick="navigate('branches')">Explore Branches →</button>
+                    <button class="btn btn-outline btn-lg" onclick="navigate('compare')">Compare Domains</button>
                 </div>
                 <div class="hero-stats">
                     <div class="stat"><span class="stat-num">11+</span><span>Domains</span></div>
@@ -108,13 +166,14 @@ function renderLandingSection() {
 }
 
 // ─── BRANCH SELECTION ────────────────────────────────────────
-function renderBranchSection() {
+function renderBranchSection(push = true) {
+    if (push) navigate('branches');
     const app = document.getElementById('app');
     window.scrollTo(0, 0);
     appState.currentBranchId = null;
 
     const branchesHTML = appData.branches.map(branch => `
-        <div class="branch-card" onclick="renderDomainsSection('${branch.id}')">
+        <div class="branch-card" onclick="navigate('domains/${branch.id}')">
             <div class="branch-icon">${branch.icon}</div>
             <h3 class="branch-name">${branch.name}</h3>
             <p class="branch-desc">${branch.description}</p>
@@ -124,7 +183,7 @@ function renderBranchSection() {
     app.innerHTML = `
         <section class="section-padding" id="branches">
             <div class="container">
-                <button class="back-btn" onclick="renderLandingSection()">🏠 Home</button>
+                <button class="back-btn" onclick="navigate('home')">🏠 Home</button>
                 <div class="section-header">
                     <h2 class="section-title">Select Your <span class="text-gradient">Branch</span></h2>
                     <p class="section-subtitle">Choose your branch to see the most relevant domains curated for you.</p>
@@ -135,7 +194,8 @@ function renderBranchSection() {
 }
 
 // ─── DOMAIN CARDS (BRANCH-FILTERED) ─────────────────────────
-function renderDomainsSection(branchId) {
+function renderDomainsSection(branchId, push = true) {
+    if (push) navigate(`domains/${branchId}`);
     appState.currentBranchId = branchId;
     const branch = appData.branches.find(b => b.id === branchId);
     if (!branch) return;
@@ -161,13 +221,13 @@ function renderDomainCards(domains, title) {
             </div>
             <h3 class="domain-title">${domain.name}</h3>
             <p class="domain-desc">${domain.shortDesc}</p>
-            <button class="btn btn-outline domain-btn" onclick="renderDomainDetail('${domain.id}')">Explore Domain →</button>
+            <button class="btn btn-outline domain-btn" onclick="navigate('detail/${domain.id}')">Explore Domain →</button>
         </div>`;
     }).join('');
 
     const backBtn = appState.currentBranchId
-        ? `<button class="back-btn" onclick="renderBranchSection()">← Back to Branches</button>`
-        : `<button class="back-btn" onclick="renderLandingSection()">🏠 Home</button>`;
+        ? `<button class="back-btn" onclick="navigate('branches')">← Back to Branches</button>`
+        : `<button class="back-btn" onclick="navigate('home')">🏠 Home</button>`;
 
     app.innerHTML = `
         <section class="section-padding" id="domains">
@@ -236,7 +296,8 @@ function buildDomainPie(domain) {
 }
 
 // ─── DOMAIN DETAIL PAGE ──────────────────────────────────────
-function renderDomainDetail(domainId) {
+function renderDomainDetail(domainId, push = true) {
+    if (push) navigate(`detail/${domainId}`);
     const domain = appData.domains[domainId];
     if (!domain) return;
     const app = document.getElementById('app');
@@ -264,8 +325,8 @@ function renderDomainDetail(domainId) {
         </a>`).join('');
 
     const backTarget = appState.currentBranchId
-        ? `renderDomainsSection('${appState.currentBranchId}')`
-        : `renderBranchSection()`;
+        ? `navigate('domains/${appState.currentBranchId}')`
+        : `navigate('branches')`;
 
     app.innerHTML = `
         <section class="section-padding" id="domain-detail">
@@ -283,8 +344,8 @@ function renderDomainDetail(domainId) {
                     <p class="detail-intro">${domain.overview} ${domain.scope}</p>
                     <div class="detail-meta">
                         <button class="btn btn-primary" onclick="startQuiz('${domain.id}')">🎯 Take Suitability Quiz</button>
-                        <button class="btn btn-outline" onclick="renderComparison()">📊 Compare Domains</button>
-                        <button class="btn btn-contact" onclick="window.open('https://forms.gle/YourFormLinkHere','_blank')">📩 Contact Mentor</button>
+                        <button class="btn btn-outline" onclick="navigate('compare')">📊 Compare Domains</button>
+                        <button class="btn btn-contact" onclick="window.open('','_blank')">📩 Contact Mentor</button>
                     </div>
                 </div>
 
@@ -342,7 +403,8 @@ function renderDomainDetail(domainId) {
 }
 
 // ─── COMPARISON — BAR CHARTS ─────────────────────────────────
-function renderComparison() {
+function renderComparison(push = true) {
+    if (push) navigate('compare');
     const app = document.getElementById('app');
     window.scrollTo(0, 0);
 
@@ -383,7 +445,7 @@ function renderComparison() {
     const tableRowsHTML = allDomains.map(d => {
         const diffClass = getDiffClass(d.difficulty);
         return `
-            <tr onclick="renderDomainDetail('${d.id}')" style="cursor:pointer">
+            <tr onclick="navigate('detail/${d.id}')" style="cursor:pointer">
                 <td style="font-weight:600">${d.icon || ''} ${d.name}</td>
                 <td><span class="badge ${diffClass}">${d.difficulty}</span></td>
                 <td>
@@ -404,7 +466,7 @@ function renderComparison() {
     app.innerHTML = `
         <section class="section-padding" id="compare">
             <div class="container">
-                <button class="back-btn" onclick="renderLandingSection()">🏠 Home</button>
+                <button class="back-btn" onclick="navigate('home')">🏠 Home</button>
                 <div class="section-header">
                     <h2 class="section-title">Domain <span class="text-gradient">Comparison</span></h2>
                     <p class="section-subtitle">Visual comparison of core skill parameters across domains.</p>
@@ -456,7 +518,7 @@ function renderQuizQuestion() {
     app.innerHTML = `
         <section class="section-padding" id="quiz">
             <div class="container quiz-container">
-                <button class="back-btn" onclick="renderDomainDetail('${domain.id}')">← Exit Quiz</button>
+                <button class="back-btn" onclick="navigate('detail/${domain.id}')">← Exit Quiz</button>
                 <div class="quiz-header">
                     <p class="quiz-counter">Question <strong>${currentIndex + 1}</strong> of <strong>${questions.length}</strong> — ${domain.icon || ''} ${domain.name}</p>
                     <div class="progress-pill quiz-progress">
@@ -510,7 +572,7 @@ function renderQuizResult() {
     app.innerHTML = `
         <section class="section-padding" id="quiz-result">
             <div class="container quiz-container">
-                <button class="back-btn" onclick="renderLandingSection()">🏠 Home</button>
+                <button class="back-btn" onclick="navigate('home')">🏠 Home</button>
                 <div class="result-card">
                     <div class="result-emoji">${emoji}</div>
                     <h2 class="result-domain">${domain.icon || ''} ${domain.name}</h2>
@@ -530,8 +592,8 @@ function renderQuizResult() {
 
                     <p class="result-message">${resultMsg}</p>
                     <div class="hero-actions" style="justify-content:center;margin-top:2rem;">
-                        <button class="btn btn-primary" onclick="renderDomainDetail('${domain.id}')">View Roadmap</button>
-                        <button class="btn btn-outline" onclick="renderBranchSection()">Explore More Domains</button>
+                        <button class="btn btn-primary" onclick="navigate('detail/${domain.id}')">View Roadmap</button>
+                        <button class="btn btn-outline" onclick="navigate('branches')">Explore More Domains</button>
                     </div>
                 </div>
             </div>
